@@ -22,38 +22,41 @@ if not TEMPLATE_DIR.exists():
 
 
 def discover_langs():
-    return [file.name for file in TEMPLATE_DIR.iterdir() if file.is_dir()]
+    return [path for path in TEMPLATE_DIR.iterdir() if path.is_dir()]
 
 
-class Template:
-    def __init__(self, name):
-        self.name = name
-        # Checking path
-        self.path = TEMPLATE_DIR.joinpath(name)
-        if not self.path.exists():
-            fail(f'lang "{name}" not supported')
-        # Checking available falvours
-        self.available_flavours = self.discover_flavors()
-        self.flavours = []
-        self.add_flavour("default")
-        # Default rendering context
-        self.context = {"lang": name, "projet_name": "new_project"}
+class Lang:
+    def __init__(self, path):
+        if isinstance(path, str):
+            path = TEMPLATE_DIR.joinpath(path)
+        assert path.is_absolute()
+        assert path.exists()
+        self.path = path
+        self.flavours = self.discover_flavors()
 
     def discover_flavors(self):
         return {file.name: file for file in self.path.iterdir() if file.is_dir()}
 
+    def __str__(self):
+        flavours = "+" + " +".join(self.flavours.keys())
+        return f"lang {self.path.name} [{flavours}]"
+
+
+class Template:
+    def __init__(self, lang):
+        self.lang = lang
+        # Checking available falvours
+        self.flavours = []
+        self.add_flavour("default")
+        # Default rendering context
+        self.context = {"lang": lang.path.name, "projet_name": "new_project"}
+
     def add_flavour(self, name):
-        if name not in self.available_flavours:
-            available_flavours = ", ".join(self.available_flavours.keys())
-            fail(
-                f"flavour {name} found for lang {self.name}\n"
-                f"available flavours are: {available_flavours}"
-            )
+        if name not in self.lang.flavours:
+            fail(f"flavour '{name}' found for {self.lang}")
         self.flavours.append(name)
 
     def generate(self, dest):
-        if isinstance(dest, str):
-            dest = Path(dest)
         assert isinstance(dest, Path)
         if not dest.exists():
             dest.mkdir()
@@ -63,7 +66,7 @@ class Template:
             self.context["project_name"] = dest.name
         # Start the copy
         for flavour in self.flavours:
-            self.copy_dir(self.available_flavours[flavour], dest)
+            self.copy_dir(self.lang.flavours[flavour], dest)
 
     def copy_dir(self, dir, dest):
         for file in dir.iterdir():
@@ -103,17 +106,40 @@ class Template:
         return f"template {self.name}+{flavours}"
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("lang", metavar="LANG")
-parser.add_argument("dest", metavar="DEST", nargs="?")
-parser.add_argument("-f", "--flavour", dest="flavours", action="append", default=[])
+class Cli:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("lang", metavar="LANG")
+    parser.add_argument("dest", metavar="DEST", nargs="?")
+    parser.add_argument("-f", "--flavour", dest="flavours", action="append", default=[])
+
+    def parse_args(self):
+        self.options = self.parser.parse_args()
+        if self.options.dest:
+            self.options.dest = Path(self.options.dest)
+
+    def action_list_langs(self):
+        langs = [Lang(name) for name in discover_langs()]
+        langs = "  - " + "\n  - ".join([str(lang) for lang in langs])
+        print(f"Available langs:\n{langs}")
+
+    def action_init(self):
+        lang = Lang(self.options.lang)
+        template = Template(lang)
+        for f in self.options.flavours:
+            template.add_flavour(f)
+        template.generate(self.options.dest)
+
+    def run(self):
+        self.parse_args()
+        # XXX. towards a generic handling of multiple actions?
+        #      A bit too ugly maybe…
+        action = "init" if self.options.dest else "list_langs"
+        action_meth = f"action_{action}"
+        if hasattr(self, action_meth):
+            getattr(self, action_meth)()
+        else:
+            fail(f"Action {action} does not exist")
 
 
 if __name__ == "__main__":
-    cfg = parser.parse_args()
-    template = Template(cfg.lang)
-    for f in cfg.flavours:
-        template.add_flavour(f)
-    print(template)
-    if cfg.dest:
-        template.generate(cfg.dest)
+    Cli().run()
