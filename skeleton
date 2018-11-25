@@ -25,60 +25,79 @@ def discover_langs():
 
 
 class Lang:
-    def __init__(self, path: str):
-        path = TEMPLATE_DIR.joinpath(path)
-        self.path = path
-        self.flavours = self.discover_flavors()
+    """
+    A Lang represents a type of skeleton.
+    It has:
+    - a name
+    - a path in the filesystem from where template files and dirs can be copied
+    - a set of available flavours i.e. a set of variations of the default templates
+    """
 
-    def discover_flavors(self):
+    def __init__(self, name: str):
+        self.path = TEMPLATE_DIR.joinpath(name)
+        self.flavours = self._discover_flavors()
+
+    def _discover_flavors(self):
         return {file.name: file for file in self.path.iterdir() if file.is_dir()}
 
     def __str__(self):
-        flavours = "+" + " +".join(self.flavours.keys())
+        flavours = "+" + " +".join([f for f in self.flavours.keys() if f != "default"])
         return f"lang {self.path.name} [{flavours}]"
 
 
 class Template:
+    """
+    Template is a wrapper around the Lang class that implements flavour selection
+    and copying/rendering of the skeleton files and directories.
+    """
+
     def __init__(self, lang: Lang):
         self.lang = lang
-        # Checking available falvours
+        # Enabled flavours
         self.flavours = []
         self.add_flavour("default")
         # Default rendering context
         self.context = {"lang": lang.path.name, "projet_name": "new_project"}
 
     def add_flavour(self, name: str):
+        """
+        Add a flavour to the list of enabled flavours.
+        If `name` does not refer to a flavour of the language, an exception is raised.
+        """
         if name not in self.lang.flavours:
             fail(f"flavour '{name}' found for {self.lang}")
         self.flavours.append(name)
 
     def generate(self, dest: Path):
+        """
+        Generate a skeleton of project located at `dest` according the selected flavours
+        """
         if not dest.exists():
             dest.mkdir()
         assert dest.is_dir()
-        # If destination name seems meaningful, it may be the new project name
+        # Infer a name for the project if the name of the dest directory seems meaningful
         if dest.name not in {".", "..", ""}:
             self.context["project_name"] = dest.name
         # Start the copy
         for flavour in self.flavours:
-            self.copy_dir(self.lang.flavours[flavour], dest)
+            self._copy_dir(self.lang.flavours[flavour], dest)
 
-    def copy_dir(self, dir: Path, dest: Path):
+    def _copy_dir(self, dir: Path, dest: Path):
         for file in dir.iterdir():
-            filename = self.render(file.name, file)
+            filename = self._render(file.name, file)
             new_dest = dest.joinpath(filename)
             if file.is_file():
-                self.copy_file(file, new_dest)
+                self._copy_file(file, new_dest)
             elif file.is_dir():
                 new_dest.mkdir()
-                self.copy_dir(file, new_dest)
+                self._copy_dir(file, new_dest)
 
-    def copy_file(self, file: Path, dest: Path):
+    def _copy_file(self, file: Path, dest: Path):
         with open(file, "r") as file:
             with open(dest, "w") as dest:
-                dest.write(self.render(file.read(), file, infile=True))
+                dest.write(self._render(file.read(), file, infile=True))
 
-    def render(self, text: str, path: Path, infile=False):
+    def _render(self, text: str, path: Path, infile=False):
         try:
             return text.format(**self.context)
         except KeyError as err:
@@ -102,12 +121,14 @@ class Template:
 
 
 def action_list(options: argparse.Namespace):
+    """ List available langs """
     langs = [Lang(name) for name in discover_langs()]
     langs = "  - " + "\n  - ".join([str(lang) for lang in langs])
     print(f"Available langs:\n{langs}")
 
 
 def action_init(options: argparse.Namespace):
+    """ Initialize a skeleton of project """
     template = Template(options.lang)
     for f in options.flavours:
         template.add_flavour(f)
