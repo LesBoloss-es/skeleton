@@ -57,7 +57,7 @@ class Template:
         self.flavours = []
         self.add_flavour("default")
         # Default rendering context
-        self.context = {"lang": lang.path.name, "projet_name": "new_project"}
+        self.context = {"lang": lang.path.name, "project_name": "new_project"}
 
     def add_flavour(self, name: str):
         """
