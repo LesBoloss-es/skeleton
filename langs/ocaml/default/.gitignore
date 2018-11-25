@@ -1,0 +1,12 @@
+## Dune
+/_build
+/*.install
+
+## Emacs sucks
+*~
+*#
+
+## Specific
+/doc
+/bin
+/lib
