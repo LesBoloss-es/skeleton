@@ -1,0 +1,3 @@
+(executable
+ (name runtest)
+ (libraries lib))

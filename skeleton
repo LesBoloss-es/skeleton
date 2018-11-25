@@ -1,0 +1,115 @@
+#!/usr/bin/env python
+
+import argparse
+import sys
+
+from pathlib import Path
+
+
+def panic(msg):
+    print(msg, file=sys.stderr)
+    exit(2)
+
+
+def fail(msg):
+    print(msg, file=sys.stderr)
+    exit(1)
+
+
+TEMPLATE_DIR = Path(__file__).parent.joinpath("langs").absolute()
+if not TEMPLATE_DIR.exists():
+    panic(f"panic: Template directory {TEMPLATE_DIR} does not exist")
+
+
+class Template:
+    def __init__(self, name):
+        self.name = name
+        # Checking path
+        self.path = TEMPLATE_DIR.joinpath(name)
+        if not self.path.exists():
+            fail(f'lang "{name}" not supported')
+        # Checking available falvours
+        self.available_flavours = self.discover_flavors()
+        self.flavours = []
+        self.add_flavour("default")
+        # Default rendering context
+        self.context = {"lang": name, "projet_name": "new_project"}
+
+    def discover_flavors(self):
+        return {file.name: file for file in self.path.iterdir() if file.is_dir()}
+
+    def add_flavour(self, name):
+        if name not in self.available_flavours:
+            available_flavours = ", ".join(self.available_flavours.keys())
+            fail(
+                f"flavour {name} found for lang {self.name}\n"
+                f"available flavours are: {available_flavours}"
+            )
+        self.flavours.append(name)
+
+    def generate(self, dest):
+        if isinstance(dest, str):
+            dest = Path(dest)
+        assert isinstance(dest, Path)
+        if not dest.exists():
+            dest.mkdir()
+        assert dest.is_dir()
+        # If destination name seems meaningful, it may be the new project name
+        if dest.name not in {".", "..", ""}:
+            self.context["project_name"] = dest.name
+        # Start the copy
+        for flavour in self.flavours:
+            self.copy_dir(self.available_flavours[flavour], dest)
+
+    def copy_dir(self, dir, dest):
+        for file in dir.iterdir():
+            filename = self.render(file.name, file)
+            new_dest = dest.joinpath(filename)
+            if file.is_file():
+                self.copy_file(file, new_dest)
+            elif file.is_dir():
+                new_dest.mkdir()
+                self.copy_dir(file, new_dest)
+
+    def copy_file(self, file, dest):
+        with open(file, "r") as file:
+            with open(dest, "w") as dest:
+                dest.write(self.render(file.read(), file, infile=True))
+
+    def render(self, text, path, infile=False):
+        try:
+            return text.format(**self.context)
+        except KeyError as err:
+            key, = err.args
+            path = path.absolute()
+            if infile:
+                fail(
+                    f"Could not render the content of file {path}\n"
+                    f"No value found for placeholder {key}"
+                )
+            else:
+                err_type = "dir" if path.is_dir() else "file"
+                fail(
+                    f"Could not render {err_type} name {text} because key {key} is "
+                    f"undefined. Original file is location at {path}"
+                )
+
+    def __str__(self):
+        flavours = "+".join(self.flavours)
+        return f"template {self.name}+{flavours}"
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("lang", metavar="LANG")
+parser.add_argument("dest", metavar="DEST", nargs="?")
+parser.add_argument("-f", "--flavour", dest="flavours", action="append", default=[])
+
+
+if __name__ == "__main__":
+    cfg = parser.parse_args()
+    template = Template(cfg.lang)
+    for f in cfg.flavours:
+        template.add_flavour(f)
+    print(template)
+    if cfg.dest:
+        template.generate(cfg.dest)
