@@ -116,7 +116,7 @@ def action_init(options: argparse.Namespace):
 
 
 parser = argparse.ArgumentParser()
-subparsers = parser.add_subparsers(required=True)
+subparsers = parser.add_subparsers(required=True, dest="action")
 
 parser_init = subparsers.add_parser("init")
 parser_init.add_argument(
