@@ -6,12 +6,12 @@ import sys
 from pathlib import Path
 
 
-def panic(msg):
+def panic(msg: str):
     print(msg, file=sys.stderr)
     exit(2)
 
 
-def fail(msg):
+def fail(msg: str):
     print(msg, file=sys.stderr)
     exit(1)
 
@@ -26,11 +26,8 @@ def discover_langs():
 
 
 class Lang:
-    def __init__(self, path):
-        if isinstance(path, str):
-            path = TEMPLATE_DIR.joinpath(path)
-        assert path.is_absolute()
-        assert path.exists()
+    def __init__(self, path: str):
+        path = TEMPLATE_DIR.joinpath(path)
         self.path = path
         self.flavours = self.discover_flavors()
 
@@ -43,7 +40,7 @@ class Lang:
 
 
 class Template:
-    def __init__(self, lang):
+    def __init__(self, lang: Lang):
         self.lang = lang
         # Checking available falvours
         self.flavours = []
@@ -51,13 +48,12 @@ class Template:
         # Default rendering context
         self.context = {"lang": lang.path.name, "projet_name": "new_project"}
 
-    def add_flavour(self, name):
+    def add_flavour(self, name: str):
         if name not in self.lang.flavours:
             fail(f"flavour '{name}' found for {self.lang}")
         self.flavours.append(name)
 
-    def generate(self, dest):
-        assert isinstance(dest, Path)
+    def generate(self, dest: Path):
         if not dest.exists():
             dest.mkdir()
         assert dest.is_dir()
@@ -68,7 +64,7 @@ class Template:
         for flavour in self.flavours:
             self.copy_dir(self.lang.flavours[flavour], dest)
 
-    def copy_dir(self, dir, dest):
+    def copy_dir(self, dir: Path, dest: Path):
         for file in dir.iterdir():
             filename = self.render(file.name, file)
             new_dest = dest.joinpath(filename)
@@ -78,12 +74,12 @@ class Template:
                 new_dest.mkdir()
                 self.copy_dir(file, new_dest)
 
-    def copy_file(self, file, dest):
+    def copy_file(self, file: Path, dest: Path):
         with open(file, "r") as file:
             with open(dest, "w") as dest:
                 dest.write(self.render(file.read(), file, infile=True))
 
-    def render(self, text, path, infile=False):
+    def render(self, text: str, path: Path, infile=False):
         try:
             return text.format(**self.context)
         except KeyError as err:
@@ -106,13 +102,13 @@ class Template:
         return f"template {self.name}+{flavours}"
 
 
-def action_list(options):
+def action_list(options: argparse.Namespace):
     langs = [Lang(name) for name in discover_langs()]
     langs = "  - " + "\n  - ".join([str(lang) for lang in langs])
     print(f"Available langs:\n{langs}")
 
 
-def action_init(options):
+def action_init(options: argparse.Namespace):
     template = Template(options.lang)
     for f in options.flavours:
         template.add_flavour(f)
