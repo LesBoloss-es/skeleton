@@ -116,7 +116,7 @@ def action_init(options: argparse.Namespace):
 
 
 parser = argparse.ArgumentParser()
-subparsers = parser.add_subparsers(required=True, dest="action")
+subparsers = parser.add_subparsers(dest="action")
 
 parser_init = subparsers.add_parser("init")
 parser_init.add_argument(
@@ -132,4 +132,7 @@ parser_list.set_defaults(func=action_list)
 
 if __name__ == "__main__":
     options = parser.parse_args()
-    options.func(options)
+    if not options.action:
+        parser.print_help()
+    else:
+        options.func(options)
