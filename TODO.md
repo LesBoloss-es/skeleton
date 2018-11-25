@@ -1,8 +1,5 @@
 - More commands:
-  - list-langs
-  - show-lang
-
-Need to know how to use subparsers
+  - show-lang?
 
 - Features
   - allow to execute a script rather that copying a dir
