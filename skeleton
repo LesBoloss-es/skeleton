@@ -106,40 +106,34 @@ class Template:
         return f"template {self.name}+{flavours}"
 
 
-class Cli:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("lang", metavar="LANG")
-    parser.add_argument("dest", metavar="DEST", nargs="?")
-    parser.add_argument("-f", "--flavour", dest="flavours", action="append", default=[])
+def action_list(options):
+    langs = [Lang(name) for name in discover_langs()]
+    langs = "  - " + "\n  - ".join([str(lang) for lang in langs])
+    print(f"Available langs:\n{langs}")
 
-    def parse_args(self):
-        self.options = self.parser.parse_args()
-        if self.options.dest:
-            self.options.dest = Path(self.options.dest)
 
-    def action_list_langs(self):
-        langs = [Lang(name) for name in discover_langs()]
-        langs = "  - " + "\n  - ".join([str(lang) for lang in langs])
-        print(f"Available langs:\n{langs}")
+def action_init(options):
+    template = Template(options.lang)
+    for f in options.flavours:
+        template.add_flavour(f)
+    template.generate(options.dest)
 
-    def action_init(self):
-        lang = Lang(self.options.lang)
-        template = Template(lang)
-        for f in self.options.flavours:
-            template.add_flavour(f)
-        template.generate(self.options.dest)
 
-    def run(self):
-        self.parse_args()
-        # XXX. towards a generic handling of multiple actions?
-        #      A bit too ugly maybe…
-        action = "init" if self.options.dest else "list_langs"
-        action_meth = f"action_{action}"
-        if hasattr(self, action_meth):
-            getattr(self, action_meth)()
-        else:
-            fail(f"Action {action} does not exist")
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers(required=True)
+
+parser_init = subparsers.add_parser("init")
+parser_init.add_argument(
+    "-f", "--flavour", dest="flavours", action="append", default=[]
+)
+parser_init.add_argument("lang", type=Lang, metavar="LANG")
+parser_init.add_argument("dest", type=Path, metavar="DEST")
+parser_init.set_defaults(func=action_init)
+
+parser_list = subparsers.add_parser("list")
+parser_list.set_defaults(func=action_list)
 
 
 if __name__ == "__main__":
-    Cli().run()
+    options = parser.parse_args()
+    options.func(options)
