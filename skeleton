@@ -21,6 +21,10 @@ if not TEMPLATE_DIR.exists():
     panic(f"panic: Template directory {TEMPLATE_DIR} does not exist")
 
 
+def discover_langs():
+    return [file.name for file in TEMPLATE_DIR.iterdir() if file.is_dir()]
+
+
 class Template:
     def __init__(self, name):
         self.name = name
