@@ -1,0 +1,38 @@
+\documentclass[11pt,usenames,dvipsnames]{{beamer}}
+
+\usepackage[utf8]{{inputenc}}
+\usepackage[T1]{{fontenc}}
+\usepackage[english]{{babel}}
+
+
+\usetheme[block=fill,sectionpage=none]{{metropolis}}
+
+
+\title{{{project_name}}}
+
+
+\AtBeginSection[]
+{{%
+  \setbeamertemplate{{frame numbering}}{{}}
+  \begin{{frame}}<beamer>
+  \frametitle{{Outline}}
+  \tableofcontents[currentsection]
+  \end{{frame}}
+  \addtocounter{{framenumber}}{{-1}}
+  \setbeamertemplate{{frame numbering}}[fraction]
+}}
+
+%% Make the separation bar invisible since it is very tricky to animate
+\renewcommand{{\footnoterule}}{{\vspace{{.8em}}}}
+
+
+\begin{{document}}
+  \setbeamertemplate{{frame numbering}}{{}}
+
+  \frame{{\titlepage}}
+
+  \addtocounter{{framenumber}}{{-1}}
+  \setbeamertemplate{{frame numbering}}[fraction]
+
+  \input{{includes/section1}}
+\end{{document}}
