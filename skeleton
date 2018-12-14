@@ -65,7 +65,7 @@ class Template:
         If `name` does not refer to a flavour of the language, an exception is raised.
         """
         if name not in self.lang.flavours:
-            fail(f"flavour '{name}' found for {self.lang}")
+            fail(f"flavour '{name}' not found for {self.lang}")
         self.flavours.append(name)
 
     def generate(self, dest: Path):
