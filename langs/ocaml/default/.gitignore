@@ -1,6 +1,7 @@
 ## Dune
 /_build
 /*.install
+.merlin
 
 ## Emacs sucks
 *~
